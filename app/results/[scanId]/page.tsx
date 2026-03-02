@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { ResultsHero } from "@/components/results/ResultsHero";
 import { ModelResultCard } from "@/components/results/ModelResultCard";
 import { UpgradeCTA } from "@/components/results/UpgradeCTA";
 import { ScanProgress } from "@/components/scan/ScanProgress";
-import { LeadCaptureGate } from "@/components/results/LeadCaptureGate";
 import { MODEL_KEYS } from "@/lib/ai/models";
 import type { ScanData } from "@/lib/types/scan";
 
@@ -14,16 +13,6 @@ export default function ResultsPage() {
   const { scanId } = useParams<{ scanId: string }>();
   const [scan, setScan] = useState<ScanData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [unlocked, setUnlocked] = useState(false);
-
-  // Check localStorage on mount
-  useEffect(() => {
-    if (scanId) {
-      setUnlocked(
-        localStorage.getItem(`aiknowsme_unlocked_${scanId}`) === "true"
-      );
-    }
-  }, [scanId]);
 
   useEffect(() => {
     if (!scanId) return;
@@ -54,10 +43,6 @@ export default function ResultsPage() {
 
     return () => clearInterval(intervalId);
   }, [scanId]);
-
-  const handleUnlocked = useCallback(() => {
-    setUnlocked(true);
-  }, []);
 
   if (error) {
     return (
@@ -90,17 +75,6 @@ export default function ResultsPage() {
           </p>
         </div>
       </div>
-    );
-  }
-
-  // Scan completed — show gate if not unlocked
-  if (!unlocked) {
-    return (
-      <LeadCaptureGate
-        scanId={scanId}
-        brandName={scan.brand.name}
-        onUnlocked={handleUnlocked}
-      />
     );
   }
 
@@ -142,7 +116,7 @@ export default function ResultsPage() {
         ))}
       </div>
 
-      <UpgradeCTA brandName={scan.brand.name} />
+      <UpgradeCTA brandName={scan.brand.name} scanId={scanId} />
     </div>
   );
 }

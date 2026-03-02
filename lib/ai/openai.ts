@@ -7,8 +7,7 @@ export async function queryOpenAI(prompt: string): Promise<string> {
   const response = await client.chat.completions.create({
     model: AI_MODELS.openai.id,
     messages: [{ role: "user", content: prompt }],
-    max_tokens: 2048,
-    temperature: 0.7,
+    max_completion_tokens: 2048,
     web_search_options: {},
   });
 

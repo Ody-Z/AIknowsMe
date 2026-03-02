@@ -50,7 +50,7 @@ Each model has its own client file under `lib/ai/` (openai.ts, anthropic.ts, per
 - **Stripe billing**: webhook handler at `/api/webhooks/stripe`, portal at `/api/billing/portal`, checkout at `/api/billing/create-checkout`
 - **Score drop alerts**: sent via Resend when weekly scan score drops >10 points
 - **Profiles table**: auto-created via Supabase SQL trigger on `auth.users` insert (not managed by app code)
-- **Lead capture gate**: results page (`app/results/[scanId]/page.tsx`) gates completed scan results behind a Formspree form (`components/results/LeadCaptureGate.tsx`). Unlock state is persisted in `localStorage` key `aiknowsme_unlocked_{scanId}`.
+- **Waitlist CTA**: results page shows scan results freely. An inline waitlist form (`components/results/UpgradeCTA.tsx`) at the bottom captures email signups via Formspree for users interested in weekly tracking.
 - **Known build issue**: `npm run build` fails at page data collection for `/api/billing/create-checkout` when `STRIPE_SECRET_KEY` env var is missing. TypeScript compilation (`npx tsc --noEmit`) passes cleanly.
 
 ### Landing page
