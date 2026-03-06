@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { QueryResponseList } from "./QueryResponseList";
 import { CitationsList } from "./CitationsList";
 import { AI_MODELS, type ModelKey } from "@/lib/ai/models";
-import { CheckCircle, XCircle, Hash, TrendingUp } from "lucide-react";
+import { CheckCircle, XCircle, Hash, TrendingUp, Loader2 } from "lucide-react";
 
 interface ModelResult {
   model: string;
@@ -29,6 +29,7 @@ interface ModelResultCardProps {
   modelKey: ModelKey;
   results: ModelResult[];
   brandName: string;
+  loading?: boolean;
 }
 
 const SENTIMENT_MAP: Record<string, { label: string; variant: "success" | "warning" | "destructive" | "secondary" }> = {
@@ -42,6 +43,7 @@ export function ModelResultCard({
   modelKey,
   results,
   brandName,
+  loading,
 }: ModelResultCardProps) {
   const model = AI_MODELS[modelKey];
 
@@ -93,7 +95,12 @@ export function ModelResultCard({
             />
             {model.name}
           </CardTitle>
-          {anyMentioned ? (
+          {loading ? (
+            <Badge variant="secondary" className="gap-1 animate-pulse">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Loading
+            </Badge>
+          ) : anyMentioned ? (
             <Badge variant="success" className="gap-1">
               <CheckCircle className="h-3 w-3" />
               Mentioned
@@ -107,6 +114,13 @@ export function ModelResultCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground gap-3">
+            <Loader2 className="h-6 w-6 animate-spin" style={{ color: model.color }} />
+            <p className="text-sm">Fetching Gemini results&hellip;</p>
+          </div>
+        ) : (
+        <>
         {/* Score bar */}
         <div>
           <div className="mb-1 flex items-center justify-between text-sm">
@@ -149,6 +163,8 @@ export function ModelResultCard({
         {/* Citations */}
         {allCitations.length > 0 && (
           <CitationsList citations={allCitations} />
+        )}
+        </>
         )}
       </CardContent>
     </Card>

@@ -18,6 +18,8 @@ export default function ResultsPage() {
     if (!scanId) return;
 
     let intervalId: NodeJS.Timeout;
+    let completedAt: number | null = null;
+    const GEMINI_POLL_TIMEOUT_MS = 30_000;
 
     async function fetchScan() {
       try {
@@ -30,8 +32,17 @@ export default function ResultsPage() {
         const data: ScanData = await res.json();
         setScan(data);
 
-        if (data.status === "completed" || data.status === "failed") {
+        if (data.status === "failed") {
           clearInterval(intervalId);
+        }
+
+        // Keep polling after "completed" until Gemini results arrive (with timeout)
+        if (data.status === "completed") {
+          if (!completedAt) completedAt = Date.now();
+          const hasGemini = data.results.some((r) => r.model === "gemini");
+          if (hasGemini || Date.now() - completedAt > GEMINI_POLL_TIMEOUT_MS) {
+            clearInterval(intervalId);
+          }
         }
       } catch {
         setError("Failed to load scan results");
@@ -87,6 +98,8 @@ export default function ResultsPage() {
     resultsByModel[result.model].push(result);
   }
 
+  const geminiLoading = !resultsByModel["gemini"];
+
   // Model mentions map
   const modelMentions: Record<string, boolean> = {};
   for (const key of MODEL_KEYS) {
@@ -112,6 +125,7 @@ export default function ResultsPage() {
             modelKey={key}
             results={resultsByModel[key] || []}
             brandName={scan.brand.name}
+            loading={key === "gemini" && geminiLoading}
           />
         ))}
       </div>
