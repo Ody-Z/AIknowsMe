@@ -1,62 +1,14 @@
-"use client";
-
-import { useState } from "react";
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { TrendingUp, Loader2, CheckCircle2 } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
+import { TrendingUp } from "lucide-react";
 
 interface UpgradeCTAProps {
   brandName: string;
   scanId: string;
 }
 
-export function UpgradeCTA({ brandName, scanId }: UpgradeCTAProps) {
-  const [status, setStatus] = useState<"idle" | "submitting" | "submitted">(
-    "idle"
-  );
-
-  async function handleClick() {
-    setStatus("submitting");
-
-    try {
-      const body = new FormData();
-      body.append("_subject", "AIknowsMe Waitlist Signup");
-      body.append("brand_name", brandName);
-      body.append("scan_id", scanId);
-      body.append("form_type", "waitlist");
-
-      const res = await fetch("https://formspree.io/f/mlgwvyer", {
-        method: "POST",
-        headers: { Accept: "application/json" },
-        body,
-      });
-
-      if (!res.ok) {
-        setStatus("idle");
-        return;
-      }
-
-      setStatus("submitted");
-    } catch {
-      setStatus("idle");
-    }
-  }
-
-  if (status === "submitted") {
-    return (
-      <Card className="border-green-500/30 bg-green-500/5">
-        <CardContent className="flex flex-col items-center gap-3 py-8 text-center">
-          <CheckCircle2 className="h-10 w-10 text-green-500" />
-          <h3 className="font-semibold text-lg">You&apos;re on the list!</h3>
-          <p className="text-sm text-muted-foreground max-w-md">
-            We&apos;ll notify you when weekly tracking is available for{" "}
-            <span className="font-medium text-foreground">{brandName}</span>.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
+export function UpgradeCTA({ brandName }: UpgradeCTAProps) {
   return (
     <Card className="border-primary/20 bg-primary/5">
       <CardContent className="py-8">
@@ -73,20 +25,12 @@ export function UpgradeCTA({ brandName, scanId }: UpgradeCTAProps) {
               scans, trend charts, and email alerts.
             </p>
           </div>
-          <Button
-            className="shrink-0"
-            disabled={status === "submitting"}
-            onClick={handleClick}
+          <Link
+            href="/#waitlist"
+            className={buttonVariants({ className: "shrink-0" })}
           >
-            {status === "submitting" ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                Joining...
-              </>
-            ) : (
-              "Join Waitlist"
-            )}
-          </Button>
+            Join Waitlist
+          </Link>
         </div>
       </CardContent>
     </Card>

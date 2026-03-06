@@ -14,7 +14,7 @@ import { queryGemini } from "./gemini";
 import { parseResponse } from "./parser";
 import { truncate } from "@/lib/utils";
 
-const GEMINI_DELAY_MS = 8000;
+const GEMINI_DELAY_MS = 2000;
 let lastGeminiPromise: Promise<string> = Promise.resolve("");
 
 async function runGeminiWithThrottle(prompt: string): Promise<{ text: string }> {
@@ -120,45 +120,53 @@ export async function runScan(scanId: string): Promise<void> {
     const { brand } = scan;
     const brandQueries = brand.queries;
 
-    // Fan out: query × model
-    const tasks: Promise<void>[] = [];
+    // Fan out: query × model, separating Gemini (throttled) from the rest
+    const primaryTasks: Promise<void>[] = [];
+    const geminiTasks: Promise<void>[] = [];
 
     for (const query of brandQueries) {
       for (const modelKey of MODEL_KEYS) {
-        tasks.push(
-          runSingleQuery(
-            scanId,
-            query.id,
-            query.promptText,
-            brand.name,
-            null,
-            modelKey
-          )
+        const task = runSingleQuery(
+          scanId,
+          query.id,
+          query.promptText,
+          brand.name,
+          null,
+          modelKey
         );
+        if (modelKey === "gemini") {
+          geminiTasks.push(task);
+        } else {
+          primaryTasks.push(task);
+        }
       }
     }
 
-    await Promise.allSettled(tasks);
+    // Wait for non-Gemini models, then mark scan as completed
+    await Promise.allSettled(primaryTasks);
 
-    // Compute overall score (weighted average)
-    const results = await db.query.scanResults.findMany({
-      where: eq(scanResults.scanId, scanId),
-    });
+    // Compute overall score from available results so far
+    async function computeAndFinalize() {
+      const results = await db.query.scanResults.findMany({
+        where: eq(scanResults.scanId, scanId),
+      });
 
-    let totalWeight = 0;
-    let weightedSum = 0;
+      let totalWeight = 0;
+      let weightedSum = 0;
 
-    for (const result of results) {
-      const modelConfig = AI_MODELS[result.model as ModelKey];
-      const weight = modelConfig?.weight || 1.0;
-      weightedSum += result.visibilityScore * weight;
-      totalWeight += weight;
+      for (const result of results) {
+        const modelConfig = AI_MODELS[result.model as ModelKey];
+        const weight = modelConfig?.weight || 1.0;
+        weightedSum += result.visibilityScore * weight;
+        totalWeight += weight;
+      }
+
+      return totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 0;
     }
 
-    const overallScore =
-      totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 0;
+    const overallScore = await computeAndFinalize();
 
-    // Mark completed
+    // Mark completed (user sees results now)
     await db
       .update(scans)
       .set({
@@ -167,6 +175,15 @@ export async function runScan(scanId: string): Promise<void> {
         completedAt: new Date(),
       })
       .where(eq(scans.id, scanId));
+
+    // Let Gemini results trickle in, then update the score
+    Promise.allSettled(geminiTasks).then(async () => {
+      const finalScore = await computeAndFinalize();
+      await db
+        .update(scans)
+        .set({ overallScore: finalScore })
+        .where(eq(scans.id, scanId));
+    }).catch((err) => console.error(`Gemini background update failed:`, err));
   } catch (error) {
     console.error(`Scan ${scanId} failed:`, error);
 
