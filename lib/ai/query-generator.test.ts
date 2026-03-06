@@ -53,6 +53,17 @@ describe("parseQueryGeneratorContent (unit)", () => {
     expect(parseQueryGeneratorContent(content)).toContain("First query");
   });
 
+  it("parses object where keys are queries and values are empty strings", () => {
+    const content = JSON.stringify({
+      "Best financial advisor in Boston?": "",
+      "Recommend a fiduciary planner in Boston": "",
+      "Top wealth management firms in Boston": "",
+    });
+    const result = parseQueryGeneratorContent(content);
+    expect(result).toHaveLength(3);
+    expect(result[0]).toContain("Boston");
+  });
+
   it("strips markdown code block and parses", () => {
     const content = "```json\n{\"queries\": [\"a\", \"b\", \"c\"]}\n```";
     expect(parseQueryGeneratorContent(content)).toEqual(["a", "b", "c"]);

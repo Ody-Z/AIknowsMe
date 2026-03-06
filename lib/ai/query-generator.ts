@@ -25,7 +25,10 @@ export function parseQueryGeneratorContent(content: string): string[] {
       if (Array.isArray(arr)) {
         raw = arr;
       } else if (Object.values(parsed).every((v) => typeof v === "string")) {
-        raw = Object.values(parsed);
+        // If values are non-empty strings, use them; otherwise keys might be the actual queries
+        const values = Object.values(parsed) as string[];
+        const keys = Object.keys(parsed);
+        raw = values.some((v) => v.length > 0) ? values : keys;
       } else {
         raw = [];
       }
@@ -64,24 +67,40 @@ Rules:
           content: `Person: ${name}\nBackground: ${background}`,
         },
       ],
-      max_completion_tokens: 512,
+      max_completion_tokens: 2048,
       response_format: { type: "json_object" },
     });
 
     const msg = response.choices[0]?.message;
-    const rawContent = msg?.content as string | { text: string }[] | undefined;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rawContent = msg?.content as any;
     let content: string;
     if (typeof rawContent === "string") {
       content = rawContent.trim();
     } else if (Array.isArray(rawContent)) {
       content = rawContent
-        .map((p) => (p && typeof p === "object" && "text" in p ? String(p.text ?? "") : ""))
+        .map((p: any) => {
+          if (typeof p === "string") return p;
+          if (p && typeof p === "object") return String(p.text ?? p.value ?? "");
+          return "";
+        })
         .join("\n")
         .trim();
+    } else if (rawContent && typeof rawContent === "object") {
+      // Some models return content as a single object with a text property
+      content = String(rawContent.text ?? rawContent.value ?? JSON.stringify(rawContent));
     } else {
-      content = "{}";
+      content = "";
+    }
+    if (!content) {
+      // Fallback: check for parsed JSON output or other message fields
+      const fallbackContent = (msg as any)?.parsed ?? (msg as any)?.output_text ?? (msg as any)?.tool_calls?.[0]?.function?.arguments;
+      if (fallbackContent) {
+        content = typeof fallbackContent === "string" ? fallbackContent : JSON.stringify(fallbackContent);
+      }
     }
     if (!content) content = "{}";
+    console.log("[query-generator] raw message keys:", msg ? Object.keys(msg) : "no msg", "rawContent type:", typeof rawContent, "isArray:", Array.isArray(rawContent));
 
     console.log("[query-generator] raw content length:", content.length, "preview:", content.slice(0, 300));
 

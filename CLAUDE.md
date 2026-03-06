@@ -14,7 +14,17 @@ npm run db:migrate   # Run migrations
 npm run db:studio    # Open Drizzle Studio GUI
 ```
 
-No test framework is configured.
+Test framework: Vitest. Config in `vitest.config.ts`, setup in `vitest.setup.ts`.
+
+## Workflow: after every code edit
+
+Always run these checks after making changes, before considering the task done:
+
+```bash
+npm test              # Run Vitest test suite
+npm run lint          # ESLint
+npm run build         # Production build (may fail without STRIPE_SECRET_KEY, see known build issue)
+```
 
 ## Architecture
 
